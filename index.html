@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rainchest</title>
+    <style>
+        @font-face {
+            font-family: 'Rain';
+            src: url('Rain.otf') format('opentype');
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1A1E3D;
+            color: white;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #app {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        .screen {
+            display: none;
+            width: 100%;
+            height: 100%;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        .title {
+            font-family: 'Rain', serif;
+            font-size: 4rem;
+            margin-bottom: 3rem;
+            text-shadow: 0 0 20px rgba(255,255,255,0.5);
+        }
+
+        .btn {
+            background: #2ECC71;
+            border: 4px solid #27AE60;
+            color: white;
+            font-family: 'Courier New', monospace;
+            font-size: 1.5rem;
+            padding: 15px 40px;
+            margin: 10px;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.1s;
+            width: 250px;
+        }
+
+        .btn:hover:not(.back) {
+            background: #27AE60;
+            transform: scale(1.05);
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        .btn:disabled {
+            background: #555;
+            border-color: #333;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .btn.back {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: auto;
+            padding: 10px 20px;
+            font-size: 1rem;
+            background: #E74C3C;
+            border-color: #C0392B;
+            z-index: 1000;
+        }
+
+        .btn.back:hover {
+            background: #C0392B;
+        }
+
+        .btn.hit-stand {
+            width: 250px;
+        }
+
+        /* Blackjack */
+        .game-area {
+            width: 100%;
+            max-width: 800px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            align-items: center;
+            position: relative;
+        }
+
+        .dealer-area, .player-area {
+            display: flex;
+            gap: 10px;
+            min-height: 140px;
+            align-items: center;
+        }
+
+        .card {
+            width: 80px;
+            height: 120px;
+            background: white;
+            border: 3px solid #000;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: bold;
+            position: relative;
+            animation: dealCard 0.3s ease-out;
+        }
+
+        @keyframes dealCard {
+            from {
+                transform: translateY(-100px) rotate(-10deg);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0) rotate(0);
+                opacity: 1;
+            }
+        }
+
+        .card.back {
+            background: linear-gradient(45deg, #3498DB 25%, #2980B9 25%, #2980B9 50%, #3498DB 50%, #3498DB 75%, #2980B9 75%);
+            background-size: 20px 20px;
+        }
+
+        .card.red {
+            color: #E74C3C;
+        }
+
+        .card.black {
+            color: #000;
+        }
+
+        .card-value {
+            font-size: 1.5rem;
+        }
+
+        .card-suit {
+            font-size: 2rem;
+        }
+
+        .controls {
+            display: flex;
+            gap: 20px;
+            z-index: 10;
+        }
+
+        .result-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
+            padding: 40px 80px;
+            border: 4px solid white;
+            font-size: 3rem;
+            font-weight: bold;
+            z-index: 100;
+            cursor: pointer;
+            display: none;
+        }
+
+        .result-overlay.show {
+            display: block;
+            animation: resultAppear 0.3s ease-out;
+        }
+
+        @keyframes resultAppear {
+            from {
+                transform: translate(-50%, -50%) scale(0);
+            }
+            to {
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        .result-overlay.win {
+            color: #2ECC71;
+        }
+
+        .result-overlay.lose {
+            color: #E74C3C;
+        }
+
+        .result-overlay.draw {
+            color: #F39C12;
+        }
+
+        /* Chest */
+        .chest-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .chest {
+            width: 200px;
+            height: 150px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .chest-body {
+            width: 200px;
+            height: 100px;
+            background: linear-gradient(to bottom, #8B4513 0%, #654321 50%, #8B4513 100%);
+            border: 4px solid #000;
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .chest-lid {
+            width: 220px;
+            height: 60px;
+            background: linear-gradient(to bottom, #DAA520 0%, #B8860B 50%, #DAA520 100%);
+            border: 4px solid #000;
+            border-radius: 10px 10px 0 0;
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            transform-origin: bottom;
+            transition: transform 0.5s;
+        }
+
+        .chest.opening .chest-lid {
+            transform: rotateX(-120deg);
+        }
+
+        .chest-lock {
+            width: 20px;
+            height: 30px;
+            background: #FFD700;
+            border: 2px solid #000;
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .chest-shine {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: white;
+            border-radius: 50%;
+            animation: shine 2s infinite;
+        }
+
+        @keyframes shine {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+
+        .shine1 { top: 10px; left: 20px; animation-delay: 0s; }
+        .shine2 { top: 30px; right: 30px; animation-delay: 0.5s; }
+        .shine3 { bottom: 20px; left: 40px; animation-delay: 1s; }
+
+        .reward-card {
+            width: 250px;
+            height: 350px;
+            border: 4px solid #000;
+            border-radius: 15px;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            z-index: 200;
+            cursor: pointer;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+        }
+
+        .reward-card.show {
+            display: flex;
+            animation: cardAppear 0.5s ease-out forwards;
+        }
+
+        @keyframes cardAppear {
+            to {
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        .reward-card.common { background: linear-gradient(135deg, #FFF 0%, #CCC 100%); }
+        .reward-card.uncommon { background: linear-gradient(135deg, #2ECC71 0%, #27AE60 100%); }
+        .reward-card.rare { background: linear-gradient(135deg, #00CED1 0%, #008B8B 100%); }
+        .reward-card.epic { background: linear-gradient(135deg, #FF00FF 0%, #8B008B 100%); }
+        .reward-card.legendary { background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); }
+
+        .reward-rarity {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            color: #000;
+        }
+
+        .reward-item {
+            font-size: 1.8rem;
+            font-weight: bold;
+            text-align: center;
+            color: #000;
+        }
+
+        .ticket-count {
+            font-size: 1.2rem;
+            margin-top: 10px;
+        }
+
+        /* Collection */
+        .collection-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 800px;
+            margin-top: 20px;
+        }
+
+        .collection-item {
+            background: rgba(255,255,255,0.1);
+            border: 3px solid white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .collection-rarity {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .collection-count {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        .collection-item.common .collection-rarity { color: #FFF; }
+        .collection-item.uncommon .collection-rarity { color: #2ECC71; }
+        .collection-item.rare .collection-rarity { color: #00CED1; }
+        .collection-item.epic .collection-rarity { color: #FF00FF; }
+        .collection-item.legendary .collection-rarity { color: #FFD700; }
+
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            z-index: 150;
+        }
+
+        @keyframes particleFloat {
+            to {
+                transform: translateY(-200px) translateX(var(--x)) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .title {
+                font-size: 2.5rem;
+                margin-bottom: 2rem;
+            }
+
+            .btn {
+                font-size: 1.2rem;
+                padding: 12px 30px;
+                min-width: 150px;
+            }
+
+            .btn.back {
+                font-size: .75rem;
+                min-width: auto;
+            }
+
+            .btn.hit-stand {
+                width: 120px;  /* Establecemos un ancho específico para pantallas pequeñas */
+            }
+
+            .card {
+                width: 60px;
+                height: 90px;
+                font-size: 1.5rem;
+            }
+
+            .card-value {
+                font-size: 1rem;
+            }
+
+            .card-suit {
+                font-size: 1.5rem;
+            }
+
+            .result-overlay {
+                font-size: 2rem;
+                padding: 30px 50px;
+            }
+
+            .chest {
+                width: 150px;
+                height: 120px;
+            }
+
+            .chest-body {
+                width: 150px;
+                height: 80px;
+            }
+
+            .chest-lid {
+                width: 170px;
+                height: 50px;
+            }
+
+            .reward-card {
+                width: 200px;
+                height: 280px;
+            }
+
+            .reward-rarity {
+                font-size: 1.2rem;
+            }
+
+            .reward-item {
+                font-size: 1.4rem;
+            }
+
+            .collection-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+                max-width: 100%;
+            }
+
+            .collection-item {
+                padding: 15px 10px;
+            }
+
+            .collection-rarity {
+                font-size: 1rem;
+                margin-bottom: 5px;
+            }
+
+            .collection-count {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- Main Menu -->
+        <div id="menu" class="screen active">
+            <h1 class="title">Rainchest</h1>
+            <button class="btn" onclick="showScreen('bet')">Bet</button>
+            <button class="btn" onclick="showScreen('chest')">Chest</button>
+            <button class="btn" onclick="showScreen('collection')">Collection</button>
+        </div>
+
+        <!-- Blackjack -->
+        <div id="bet" class="screen">
+            <button class="btn back" onclick="showScreen('menu')">Back</button>
+            <div class="game-area">
+                <div class="dealer-area" id="dealerCards"></div>
+                <div class="controls">
+                    <button class="btn hit-stand" id="hitBtn" onclick="hit()">Hit</button>
+                    <button class="btn hit-stand" id="standBtn" onclick="stand()">Stand</button>
+                </div>
+                <div class="player-area" id="playerCards"></div>
+                <div class="result-overlay" id="resultOverlay" onclick="handleResultClick()"></div>
+            </div>
+        </div>
+
+        <!-- Chest -->
+        <div id="chest" class="screen">
+            <button class="btn back" onclick="showScreen('menu')">Back</button>
+            <div class="chest-container">
+                <div class="chest" id="chestBox">
+                    <div class="chest-lid">
+                        <div class="chest-shine shine1"></div>
+                        <div class="chest-shine shine2"></div>
+                        <div class="chest-shine shine3"></div>
+                    </div>
+                    <div class="chest-body">
+                        <div class="chest-lock"></div>
+                    </div>
+                </div>
+                <button class="btn" id="openChestBtn" onclick="openChest()">
+                    Open one (<span id="ticketDisplay">0</span>)
+                </button>
+            </div>
+            <div class="reward-card" id="rewardCard" onclick="closeReward()">
+                <div class="reward-rarity" id="rewardRarity"></div>
+                <div class="reward-item" id="rewardItem"></div>
+            </div>
+        </div>
+
+        <!-- Collection -->
+        <div id="collection" class="screen">
+            <button class="btn back" onclick="showScreen('menu')">Back</button>
+            <h2 style="font-size: 2rem; margin-bottom: 20px;">Collection</h2>
+            <div style="font-size: 1.5rem; margin-bottom: 20px;">
+                Tickets: <span id="collectionTickets">0</span>
+            </div>
+            <div class="collection-grid" id="collectionGrid"></div>
+        </div>
+    </div>
+
+    <script>
+        const rarities = [
+            { name: 'Common', class: 'common', weight: 50, items: ['Moneda de Cobre', 'Piedra Lisa', 'Rama Vieja', 'Pergamino Roto'] },
+            { name: 'Uncommon', class: 'uncommon', weight: 30, items: ['Poción Verde', 'Daga Oxidada', 'Anillo Simple', 'Gema Pequeña'] },
+            { name: 'Rare', class: 'rare', weight: 15, items: ['Espada Mágica', 'Escudo Brillante', 'Cristal Azul', 'Amuleto Antiguo'] },
+            { name: 'Epic', class: 'epic', weight: 4, items: ['Corona Encantada', 'Armadura Legendaria', 'Orbe de Poder', 'Cetro Real'] },
+            { name: 'Legendary', class: 'legendary', weight: 1, items: ['Excalibur', 'Grial Sagrado', 'Piedra Filosofal', 'Dragón Bebé'] }
+        ];
+
+        let gameState = {
+            tickets: 0,
+            collection: {
+                common: 0,
+                uncommon: 0,
+                rare: 0,
+                epic: 0,
+                legendary: 0
+            },
+            deck: [],
+            playerHand: [],
+            dealerHand: [],
+            gameOver: false
+        };
+
+        function showScreen(screenName) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenName).classList.add('active');
+
+            if (screenName === 'bet') {
+                startNewGame();
+            } else if (screenName === 'chest') {
+                updateChestUI();
+            } else if (screenName === 'collection') {
+                updateCollectionUI();
+            }
+        }
+
+        function createDeck() {
+            const suits = ['♠️', '♥️', '♦️', '♣️'];
+            const values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+            const deck = [];
+
+            for (let suit of suits) {
+                for (let value of values) {
+                    deck.push({ suit, value });
+                }
+            }
+
+            return deck.sort(() => Math.random() - 0.5);
+        }
+
+        function getCardValue(card) {
+            if (card.value === 'A') return 11;
+            if (['J', 'Q', 'K'].includes(card.value)) return 10;
+            return parseInt(card.value);
+        }
+
+        function calculateScore(hand) {
+            let score = 0;
+            let aces = 0;
+
+            for (let card of hand) {
+                score += getCardValue(card);
+                if (card.value === 'A') aces++;
+            }
+
+            while (score > 21 && aces > 0) {
+                score -= 10;
+                aces--;
+            }
+
+            return score;
+        }
+
+        function createCardElement(card, hidden = false) {
+            const cardEl = document.createElement('div');
+            cardEl.className = 'card';
+
+            if (hidden) {
+                cardEl.classList.add('back');
+            } else {
+                const color = (card.suit === '♥️' || card.suit === '♦️') ? 'red' : 'black';
+                cardEl.classList.add(color);
+                cardEl.innerHTML = `
+                    <div class="card-value">${card.value}</div>
+                    <div class="card-suit">${card.suit}</div>
+                `;
+            }
+
+            return cardEl;
+        }
+
+        function startNewGame() {
+            gameState.deck = createDeck();
+            gameState.playerHand = [gameState.deck.pop(), gameState.deck.pop()];
+            gameState.dealerHand = [gameState.deck.pop(), gameState.deck.pop()];
+            gameState.gameOver = false;
+
+            document.getElementById('dealerCards').innerHTML = '';
+            document.getElementById('playerCards').innerHTML = '';
+            document.getElementById('resultOverlay').classList.remove('show');
+
+            setTimeout(() => {
+                document.getElementById('dealerCards').appendChild(createCardElement(gameState.dealerHand[0]));
+                document.getElementById('dealerCards').appendChild(createCardElement(gameState.dealerHand[1], true));
+            }, 100);
+
+            setTimeout(() => {
+                gameState.playerHand.forEach(card => {
+                    document.getElementById('playerCards').appendChild(createCardElement(card));
+                });
+            }, 400);
+
+            document.getElementById('hitBtn').disabled = false;
+            document.getElementById('standBtn').disabled = false;
+
+            if (calculateScore(gameState.playerHand) === 21) {
+                setTimeout(() => stand(), 800);
+            }
+        }
+
+        function hit() {
+            if (gameState.gameOver) return;
+
+            const card = gameState.deck.pop();
+            gameState.playerHand.push(card);
+            document.getElementById('playerCards').appendChild(createCardElement(card));
+
+            const score = calculateScore(gameState.playerHand);
+            if (score > 21) {
+                endGame('lose');
+            } else if (score === 21) {
+                stand();
+            }
+        }
+
+        function stand() {
+            if (gameState.gameOver) return;
+            gameState.gameOver = true;
+
+            document.getElementById('hitBtn').disabled = true;
+            document.getElementById('standBtn').disabled = true;
+
+            // Reveal dealer's hidden card
+            document.getElementById('dealerCards').innerHTML = '';
+            gameState.dealerHand.forEach(card => {
+                document.getElementById('dealerCards').appendChild(createCardElement(card));
+            });
+
+            // Dealer draws
+            let dealerDraws = 0;
+            const dealerDrawInterval = setInterval(() => {
+                const dealerScore = calculateScore(gameState.dealerHand);
+                if (dealerScore < 17) {
+                    const card = gameState.deck.pop();
+                    gameState.dealerHand.push(card);
+                    document.getElementById('dealerCards').appendChild(createCardElement(card));
+                    dealerDraws++;
+                } else {
+                    clearInterval(dealerDrawInterval);
+                    determineWinner();
+                }
+            }, 800);
+
+            if (calculateScore(gameState.dealerHand) >= 17) {
+                clearInterval(dealerDrawInterval);
+                setTimeout(() => determineWinner(), 500);
+            }
+        }
+
+        function determineWinner() {
+            const playerScore = calculateScore(gameState.playerHand);
+            const dealerScore = calculateScore(gameState.dealerHand);
+
+            if (dealerScore > 21 || playerScore > dealerScore) {
+                endGame('win');
+            } else if (playerScore === dealerScore) {
+                endGame('draw');
+            } else {
+                endGame('lose');
+            }
+        }
+
+        function endGame(result) {
+            gameState.gameOver = true;
+            const overlay = document.getElementById('resultOverlay');
+            
+            overlay.className = 'result-overlay show ' + result;
+            overlay.textContent = result.toUpperCase();
+
+            if (result === 'win') {
+                gameState.tickets++;
+                createParticles(50, '#2ECC71');
+            }
+        }
+
+        function handleResultClick() {
+            showScreen('menu');
+        }
+
+        function createParticles(count, color) {
+            for (let i = 0; i < count; i++) {
+                setTimeout(() => {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.textContent = '✨';
+                    particle.style.left = Math.random() * 100 + '%';
+                    particle.style.top = '50%';
+                    particle.style.fontSize = (Math.random() * 20 + 10) + 'px';
+                    particle.style.setProperty('--x', (Math.random() - 0.5) * 200 + 'px');
+                    particle.style.animation = 'particleFloat 2s ease-out forwards';
+                    
+                    document.getElementById('app').appendChild(particle);
+                    
+                    setTimeout(() => particle.remove(), 2000);
+                }, i * 20);
+            }
+        }
+
+        function updateChestUI() {
+            document.getElementById('ticketDisplay').textContent = gameState.tickets;
+            document.getElementById('openChestBtn').disabled = gameState.tickets === 0;
+            document.getElementById('chestBox').classList.remove('opening');
+            document.getElementById('rewardCard').classList.remove('show');
+        }
+
+        function openChest() {
+            if (gameState.tickets === 0) return;
+
+            gameState.tickets--;
+            document.getElementById('ticketDisplay').textContent = gameState.tickets;
+            document.getElementById('openChestBtn').disabled = true;
+
+            const chest = document.getElementById('chestBox');
+            chest.classList.add('opening');
+
+            setTimeout(() => {
+                const reward = getRandomReward();
+                showReward(reward);
+                gameState.collection[reward.class]++;
+            }, 500);
+        }
+
+        function getRandomReward() {
+            const totalWeight = rarities.reduce((sum, r) => sum + r.weight, 0);
+            let random = Math.random() * totalWeight;
+
+            for (let rarity of rarities) {
+                random -= rarity.weight;
+                if (random <= 0) {
+                    const item = rarity.items[Math.floor(Math.random() * rarity.items.length)];
+                    return { ...rarity, item };
+                }
+            }
+
+            return rarities[0];
+        }
+
+        function showReward(reward) {
+            const card = document.getElementById('rewardCard');
+            card.className = 'reward-card show ' + reward.class;
+            document.getElementById('rewardRarity').textContent = reward.name;
+            document.getElementById('rewardItem').textContent = reward.item;
+
+            createParticles(100);
+        }
+
+        function closeReward() {
+            document.getElementById('rewardCard').classList.remove('show');
+            document.getElementById('chestBox').classList.remove('opening');
+            document.getElementById('openChestBtn').disabled = gameState.tickets === 0;
+        }
+
+        function updateCollectionUI() {
+            document.getElementById('collectionTickets').textContent = gameState.tickets;
+            const grid = document.getElementById('collectionGrid');
+            grid.innerHTML = '';
+
+            rarities.forEach(rarity => {
+                const item = document.createElement('div');
+                item.className = 'collection-item ' + rarity.class;
+                item.innerHTML = `
+                    <div class="collection-rarity">${rarity.name}</div>
+                    <div class="collection-count">${gameState.collection[rarity.class]}</div>
+                `;
+                grid.appendChild(item);
+            });
+        }
+    </script>
+</body>
+</html>
